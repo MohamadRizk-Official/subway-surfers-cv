@@ -28,7 +28,7 @@ Webcam → OpenCV frames → MediaPipe landmarks → gesture logic → PyAutoGUI
 | Raise left hand | Move left |
 | Raise right hand | Move right |
 | Raise both hands | Jump |
-| Squat | Roll |
+| Knee above hip | Roll |
 
 Both-hands-up takes priority over single-hand detection, so jumps never misfire as lane switches.
 
@@ -68,7 +68,7 @@ These values are at the top of the file and control how the system feels:
 | Setting | Default | What it does |
 |---|---|---|
 | `HAND_UP_RATIO` | `0.18` | How high your wrist must go above your shoulder to register |
-| `SQUAT_RATIO` | `0.25` | How close hips must get to knees for a roll |
+| `SQUAT_RATIO` | `0.25` | How high the knee must rise above the hip to trigger a roll |
 | `COOLDOWN_MS` | `280` | Minimum time between the same action firing twice |
 | `MIRROR_VIEW` | `True` | Flips the webcam so movement feels natural |
 | `SWAP_LR` | `True` | Corrects left/right orientation for mirrored view |
