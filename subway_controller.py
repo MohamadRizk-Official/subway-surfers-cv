@@ -3,14 +3,14 @@ import cv2
 import mediapipe as mp
 import pyautogui
 
-# ============= TUNABLES ==================
-MIRROR_VIEW    = True     # mirror the webcam view for natural control
-HAND_UP_RATIO   = 0.18     # how far above the shoulder the wrist must be (fraction of shoulder width)
-SQUAT_RATIO     = 0.25     # hips close to knees -> roll
-COOLDOWN_MS    = 280      # min time between same action
-SWAP_LR       = True     # True => swap Left/Right outputs so "my left hand" moves left in game
-SHOW_DEBUG   = True
-# ==============================================
+# =========== TUNABLES ===============
+MIRROR_VIEW      = True     # mirror the webcam view for natural control
+HAND_UP_RATIO    = 0.18     # how far above the shoulder the wrist must be (fraction of shoulder width)
+KNEE_UP_RATIO    = 0.25     # knee rises above hip -> roll
+COOLDOWN_MS      = 280      # min time between same action
+SWAP_LR          = True     # True => swap Left/Right outputs so "my left hand" moves left in game
+SHOW_DEBUG       = True
+# ============================
 
 pyautogui.FAILSAFE = False
 
@@ -25,7 +25,7 @@ draw = mp.solutions.drawing_utils
 cap = cv2.VideoCapture(0)
 
 # Edge-trigger state + per-action cooldowns
-prev = {"left_up": False, "right_up": False, "both_up": False, "squat": False}
+prev = {"left_up": False, "right_up": False, "both_up": False, "knee_up": False}
 last = {"left":0, "right":0, "up":0, "down":0}
 
 def press(key):
@@ -64,13 +64,13 @@ while True:
         # Scale by shoulder width so thresholds auto-fit your size/distance
         shw = max(1e-6, abs(r_sh.x - l_sh.x))
 
-        # ----- HANDS-UP DETECTION (per hand) -----
+        # --- HANDS-UP DETECTION (per hand) -----
         # y smaller = higher on image
         left_up  = l_w.y < (l_sh.y - HAND_UP_RATIO*shw)
         right_up = r_w.y < (r_sh.y - HAND_UP_RATIO*shw)
         both_up  = left_up and right_up
 
-        # ----- PRIORITY: JUMP when BOTH hands up -----
+        # --- PRIORITY: JUMP when BOTH hands up -----
         if both_up and not prev["both_up"] and (now - last["up"] > COOLDOWN_MS):
             press('up'); last["up"] = now; actions.append("JUMP")
 
@@ -83,22 +83,22 @@ while True:
 
         # ----- KNEE ABOVE HIP → ROLL -----
         thigh_len = max(1e-6, ((l_k.y + r_k.y)/2.0) - ((l_hip.y + r_hip.y)/2.0))
-        squat = thigh_len < SQUAT_RATIO
-        if squat and not prev["squat"] and (now - last["down"] > COOLDOWN_MS):
+        knee_up = thigh_len < KNEE_UP_RATIO
+        if knee_up and not prev["knee_up"] and (now - last["down"] > COOLDOWN_MS):
             press('down'); last["down"] = now; actions.append("ROLL")
 
         # Update edge states
         prev["left_up"]  = left_up
         prev["right_up"] = right_up
         prev["both_up"]  = both_up
-        prev["squat"]    = squat
+        prev["knee_up"]  = knee_up
 
         # Debug overlay
         if SHOW_DEBUG:
             draw.draw_landmarks(frame, res.pose_landmarks, mp_pose.POSE_CONNECTIONS)
             cv2.putText(frame, f"L_up={left_up}  R_up={right_up}  BOTH={both_up}", (10,30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255,255,255), 2)
-            cv2.putText(frame, f"thigh_len={thigh_len:.2f}  squat={squat}", (10,60),
+            cv2.putText(frame, f"thigh_len={thigh_len:.2f}  knee_up={knee_up}", (10,60),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,255), 2)
             if actions:
                 cv2.putText(frame, " | ".join(actions), (10, 95),
